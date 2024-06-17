@@ -434,6 +434,7 @@ if __name__ == '__main__':
     if opt.task == -1 or opt.task == 4:
         extract_semantics(ori_imgs_dir, parsing_dir)
     """
+    print(base_dir)
     
     # extract bg
     if opt.task == -1 or opt.task == 5:
