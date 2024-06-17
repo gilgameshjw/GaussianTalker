@@ -111,6 +111,26 @@ def extract_background(base_dir, ori_imgs_dir):
     for image_path in tqdm.tqdm(image_paths):
         parse_img = cv2.imread(image_path.replace('ori_imgs', 'parsing').replace('.jpg', '.png'))
         bg = (parse_img[..., 0] == 255) & (parse_img[..., 1] == 255) & (parse_img[..., 2] == 255)
+            
+        #####################
+        print(bg)
+        print(type(parse_img))
+        print(parse_img.shape)
+        from skimage import io
+
+        image_path = image_path.replace('ori_imgs', 'parsing').replace('.jpg', '.png')
+        original_resolution = 512
+        image = cv2.resize(io.imread(image_path), (original_resolution, original_resolution)) #/ 255
+        print(image.shape)
+        image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        print(image.shape)
+        image = cv2.resize(image, (original_resolution, original_resolution))
+        print(image.shape)
+        
+        import sys
+        sys.exit()
+        #####################
+        
         fg_xys = np.stack(np.nonzero(~bg)).transpose(1, 0)
         nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(fg_xys)
         dists, _ = nbrs.kneighbors(all_xys)
@@ -397,7 +417,7 @@ if __name__ == '__main__':
     os.makedirs(gt_imgs_dir, exist_ok=True)
     os.makedirs(torso_imgs_dir, exist_ok=True)
 
-
+    """
     # extract audio
     if opt.task == -1 or opt.task == 1:
         extract_audio(opt.path, wav_path)
@@ -413,7 +433,8 @@ if __name__ == '__main__':
     # face parsing
     if opt.task == -1 or opt.task == 4:
         extract_semantics(ori_imgs_dir, parsing_dir)
-
+    """
+    
     # extract bg
     if opt.task == -1 or opt.task == 5:
         extract_background(base_dir, ori_imgs_dir)

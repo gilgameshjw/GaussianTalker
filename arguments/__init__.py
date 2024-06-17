@@ -50,7 +50,6 @@ class ModelParams(ParamGroup):
         self._source_path = ""
         self._model_path = ""
         self._images = "images"
-        self._resolution = -1
         self._white_background = True
         self.data_device = "cuda"
         self.eval = True
@@ -58,6 +57,7 @@ class ModelParams(ParamGroup):
         self.add_points=False
         self.extension=".png"
         self.llffhold=8
+        self.resolution = 256
         super().__init__(parser, "Loading Parameters", sentinel)
 
     def extract(self, args):
