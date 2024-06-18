@@ -397,7 +397,7 @@ if __name__ == "__main__":
         from utils.params_utils import merge_hparams
         config = mmcv.Config.fromfile(args.configs)
         args = merge_hparams(args, config)
-        #print(args)
+        print(args)
         #print(type(args))
         #print(args.multires)
         #print(args.llffhold)

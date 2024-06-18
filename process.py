@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import tqdm
 import json
@@ -6,7 +7,14 @@ import argparse
 import cv2
 import numpy as np
 import subprocess
+from argparse import ArgumentParser
+from arguments import ModelParams, PipelineParams, get_combined_args, ModelHiddenParams
 
+
+def load_resize_images(image_path, tuple_resolution):
+    input = cv2.imread(image_path, cv2.IMREAD_UNCHANGED) # [H, W, 3]
+    input = cv2.resize(input, tuple_resolution)
+    return input
 
 def get_duration(file_path):
     result = subprocess.run(
@@ -54,7 +62,6 @@ def extract_audio_features(path, mode='wav2vec'):
     print(f'[INFO] ===== extracted audio labels =====')
 
 
-
 def extract_images(path, out_path, fps=25):
 
     print(f'[INFO] ===== extract images from {path} to {out_path} =====')
@@ -63,18 +70,18 @@ def extract_images(path, out_path, fps=25):
     print(f'[INFO] ===== extracted images =====')
 
 
-def extract_semantics(ori_imgs_dir, parsing_dir):
+def extract_semantics(ori_imgs_dir, parsing_dir, tuple_resolution):
 
     print(f'[INFO] ===== extract semantics from {ori_imgs_dir} to {parsing_dir} =====')
-    cmd = f'python data_utils/face_parsing/test.py --respath={parsing_dir} --imgpath={ori_imgs_dir}'
+    h, w = tuple_resolution
+    cmd = f'python data_utils/face_parsing/test.py --respath={parsing_dir} --imgpath={ori_imgs_dir} --img_h={h} --img_w={w}'
     os.system(cmd)
     print(f'[INFO] ===== extracted semantics =====')
 
 
-def extract_landmarks(ori_imgs_dir):
+def extract_landmarks(ori_imgs_dir, tuple_resolution):
 
     print(f'[INFO] ===== extract face landmarks from {ori_imgs_dir} =====')
-
     import face_alignment
     try:
         fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False)
@@ -82,7 +89,7 @@ def extract_landmarks(ori_imgs_dir):
         fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, flip_input=False)
     image_paths = glob.glob(os.path.join(ori_imgs_dir, '*.jpg'))
     for image_path in tqdm.tqdm(image_paths):
-        input = cv2.imread(image_path, cv2.IMREAD_UNCHANGED) # [H, W, 3]
+        input = load_resize_images(image_path, tuple_resolution)
         input = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
         preds = fa.get_landmarks(input)
         if len(preds) > 0:
@@ -92,44 +99,32 @@ def extract_landmarks(ori_imgs_dir):
     print(f'[INFO] ===== extracted face landmarks =====')
 
 
-def extract_background(base_dir, ori_imgs_dir):
+def extract_background(base_dir, ori_imgs_dir, tuple_resolution):
     
     print(f'[INFO] ===== extract background image from {ori_imgs_dir} =====')
-
     from sklearn.neighbors import NearestNeighbors
-
     image_paths = glob.glob(os.path.join(ori_imgs_dir, '*.jpg'))
     # only use 1/20 image_paths 
     image_paths = image_paths[::20]
     # read one image to get H/W
-    tmp_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED) # [H, W, 3]
+    tmp_image = load_resize_images(image_paths[0], tuple_resolution)
     h, w = tmp_image.shape[:2]
+    print(h,w)
 
     # nearest neighbors
     all_xys = np.mgrid[0:h, 0:w].reshape(2, -1).transpose()
     distss = []
     for image_path in tqdm.tqdm(image_paths):
         parse_img = cv2.imread(image_path.replace('ori_imgs', 'parsing').replace('.jpg', '.png'))
+        parse_img = cv2.resize(parse_img, tuple_resolution)
         bg = (parse_img[..., 0] == 255) & (parse_img[..., 1] == 255) & (parse_img[..., 2] == 255)
-            
-        #####################
-        print(bg)
-        print(type(parse_img))
-        print(parse_img.shape)
         from skimage import io
 
         image_path = image_path.replace('ori_imgs', 'parsing').replace('.jpg', '.png')
-        original_resolution = 512
-        image = cv2.resize(io.imread(image_path), (original_resolution, original_resolution)) #/ 255
+        image = cv2.resize(io.imread(image_path), tuple_resolution)
         print(image.shape)
-        image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+        image = cv2.resize(cv2.imread(image_path, cv2.IMREAD_UNCHANGED), tuple_resolution)
         print(image.shape)
-        image = cv2.resize(image, (original_resolution, original_resolution))
-        print(image.shape)
-        
-        import sys
-        sys.exit()
-        #####################
         
         fg_xys = np.stack(np.nonzero(~bg)).transpose(1, 0)
         nbrs = NearestNeighbors(n_neighbors=1, algorithm='kd_tree').fit(fg_xys)
@@ -147,7 +142,7 @@ def extract_background(base_dir, ori_imgs_dir):
     imgs = []
     num_pixs = distss.shape[1]
     for image_path in image_paths:
-        img = cv2.imread(image_path)
+        img = cv2.resize(cv2.imread(image_path), tuple_resolution)
         imgs.append(img)
     imgs = np.stack(imgs).reshape(-1, num_pixs, 3)
 
@@ -169,23 +164,28 @@ def extract_background(base_dir, ori_imgs_dir):
     print(f'[INFO] ===== extracted background image =====')
 
 
-def extract_torso_and_gt(base_dir, ori_imgs_dir):
-
+def extract_torso_and_gt(base_dir, ori_imgs_dir, tuple_resolution):
+    
     print(f'[INFO] ===== extract torso and gt images for {base_dir} =====')
 
     from scipy.ndimage import binary_erosion, binary_dilation
 
     # load bg
     bg_image = cv2.imread(os.path.join(base_dir, 'bc.jpg'), cv2.IMREAD_UNCHANGED)
+    bg_image = cv2.resize(bg_image, tuple_resolution)
+    
     
     image_paths = glob.glob(os.path.join(ori_imgs_dir, '*.jpg'))
 
     for image_path in tqdm.tqdm(image_paths):
         # read ori image
         ori_image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED) # [H, W, 3]
+        ori_image = cv2.resize(ori_image, tuple_resolution)
 
         # read semantics
         seg = cv2.imread(image_path.replace('ori_imgs', 'parsing').replace('.jpg', '.png'))
+        seg = cv2.resize(seg, tuple_resolution)
+
         head_part = (seg[..., 0] == 255) & (seg[..., 1] == 0) & (seg[..., 2] == 0)
         neck_part = (seg[..., 0] == 0) & (seg[..., 1] == 255) & (seg[..., 2] == 0)
         torso_part = (seg[..., 0] == 0) & (seg[..., 1] == 0) & (seg[..., 2] == 255)
@@ -194,6 +194,7 @@ def extract_torso_and_gt(base_dir, ori_imgs_dir):
         # get gt image
         gt_image = ori_image.copy()
         gt_image[bg_part] = bg_image[bg_part]
+
         cv2.imwrite(image_path.replace('ori_imgs', 'gt_imgs'), gt_image)
 
         # get torso image
@@ -234,7 +235,6 @@ def extract_torso_and_gt(base_dir, ori_imgs_dir):
         else:
             inpaint_torso_mask = None
             
-
         # neck part "vertical" in-painting...
         push_down = 4
         L = 48 + push_down + 1
@@ -291,16 +291,16 @@ def extract_torso_and_gt(base_dir, ori_imgs_dir):
     print(f'[INFO] ===== extracted torso and gt images =====')
 
 
-def face_tracking(ori_imgs_dir):
+def face_tracking(ori_imgs_dir, tuple_resolution):
 
     print(f'[INFO] ===== perform face tracking =====')
 
     image_paths = glob.glob(os.path.join(ori_imgs_dir, '*.jpg'))
     
     # read one image to get H/W
-    tmp_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED) # [H, W, 3]
+    tmp_image = load_resize_images(image_paths[0], tuple_resolution)
     h, w = tmp_image.shape[:2]
-
+    print(h, w)
     cmd = f'python data_utils/face_tracking/face_tracker.py --path={ori_imgs_dir} --img_h={h} --img_w={w} --frame_num={len(image_paths)}'
     #python data_utils/face_tracking/face_tracker.py --path=data/frozenobama/ori_imgs --img_h=450 --img_w=450 --frame_num=7996
     # import pdb; pdb.set_trace()
@@ -310,7 +310,7 @@ def face_tracking(ori_imgs_dir):
     print(f'[INFO] ===== finished face tracking =====')
 
 
-def save_transforms(base_dir, ori_imgs_dir):
+def save_transforms(base_dir, ori_imgs_dir, tuple_resolution):
     print(f'[INFO] ===== save transforms =====')
 
     import torch
@@ -318,7 +318,7 @@ def save_transforms(base_dir, ori_imgs_dir):
     image_paths = glob.glob(os.path.join(ori_imgs_dir, '*.jpg'))
     
     # read one image to get H/W
-    tmp_image = cv2.imread(image_paths[0], cv2.IMREAD_UNCHANGED) # [H, W, 3]
+    tmp_image = load_resize_images(image_paths[0], tuple_resolution)
     h, w = tmp_image.shape[:2]
 
     params_dict = torch.load(os.path.join(base_dir, 'track_params.pt'))
@@ -397,11 +397,31 @@ def save_transforms(base_dir, ori_imgs_dir):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('path', type=str, help="path to video file")
+    """
+        python train.py -s data/obama/ --model_path modeleu.pt --configs arguments/64_dim_1_512_transformer.py
+    """
+    # Set up command line argument parser
+    parser = ArgumentParser(description="Training script parameters")
+    lp = ModelParams(parser)
+    pp = PipelineParams(parser)
+    hp = ModelHiddenParams(parser)
+    parser.add_argument('--path', type=str, help="path to video file")
     parser.add_argument('--task', type=int, default=-1, help="-1 means all")
     parser.add_argument('--asr', type=str, default='deepspeech', help="wav2vec or deepspeech")
 
+    parser.add_argument("--configs", type=str, default = "")
+    
+    args = parser.parse_args(sys.argv[1:])
+    #args.save_iterations.append(args.iterations)
+    if args.configs:
+        import mmcv
+        from utils.params_utils import merge_hparams
+        config = mmcv.Config.fromfile(args.configs)
+        args = merge_hparams(args, config)
+        #print(args)
+        #print(args.resolution)
+
+    tuple_resolution = (args.resolution, args.resolution)
     opt = parser.parse_args()
 
     base_dir = os.path.dirname(opt.path)
@@ -425,34 +445,33 @@ if __name__ == '__main__':
     # extract audio features
     if opt.task == -1 or opt.task == 2:
         extract_audio_features(wav_path, mode=opt.asr)
-
-    # extract images
-    if opt.task == -1 or opt.task == 3:
-        extract_images(opt.path, ori_imgs_dir)
-
-    # face parsing
-    if opt.task == -1 or opt.task == 4:
-        extract_semantics(ori_imgs_dir, parsing_dir)
     """
-    print(base_dir)
+    # extract images
+    #if opt.task == -1 or opt.task == 3:
+    #    extract_images(opt.path, ori_imgs_dir, tuple_resolution) ### pbm in this function
+    
+    # face parsing
+    #if opt.task == -1 or opt.task == 4:
+    #    extract_semantics(ori_imgs_dir, parsing_dir, tuple_resolution) ### tuple_resolution to be added!
+    #print(base_dir)
     
     # extract bg
-    if opt.task == -1 or opt.task == 5:
-        extract_background(base_dir, ori_imgs_dir)
-
+    #if opt.task == -1 or opt.task == 5:
+    #    extract_background(base_dir, ori_imgs_dir, tuple_resolution)
+    
     # extract torso images and gt_images
-    if opt.task == -1 or opt.task == 6:
-        extract_torso_and_gt(base_dir, ori_imgs_dir)
-
+    #if opt.task == -1 or opt.task == 6:
+    #    extract_torso_and_gt(base_dir, ori_imgs_dir, tuple_resolution)
+    
     # extract face landmarks
-    if opt.task == -1 or opt.task == 7:
-        extract_landmarks(ori_imgs_dir)
-
+    #if opt.task == -1 or opt.task == 7:
+    #    extract_landmarks(ori_imgs_dir, tuple_resolution)
+    
     # face tracking
-    if opt.task == -1 or opt.task == 8:
-        face_tracking(ori_imgs_dir)
-
+    #if opt.task == -1 or opt.task == 8:
+    #    face_tracking(ori_imgs_dir, tuple_resolution)
+    #"""
     # save transforms.json
     if opt.task == -1 or opt.task == 9:
-        save_transforms(base_dir, ori_imgs_dir)
-
+        save_transforms(base_dir, ori_imgs_dir, tuple_resolution)
+    #"""

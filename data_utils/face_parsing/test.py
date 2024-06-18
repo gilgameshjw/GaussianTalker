@@ -94,5 +94,7 @@ if __name__ == "__main__":
     parser.add_argument('--respath', type=str, default='./result/', help='result path for label')
     parser.add_argument('--imgpath', type=str, default='./imgs/', help='path for input images')
     parser.add_argument('--modelpath', type=str, default='data_utils/face_parsing/79999_iter.pth')
+    parser.add_argument("--img_h", type=int, default=512, help="image height")
+    parser.add_argument("--img_w", type=int, default=512, help="image width")
     args = parser.parse_args()
-    evaluate(respth=args.respath, dspth=args.imgpath, cp=args.modelpath)
+    evaluate(respth=args.respath, dspth=args.imgpath, cp=args.modelpath,img_size=(args.img_h, args.img_w))
