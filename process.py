@@ -448,12 +448,10 @@ if __name__ == '__main__':
     # extract images
     if opt.task == -1 or opt.task == 3:
         extract_images(opt.path, ori_imgs_dir, tuple_resolution) ### pbm in this function
-    
     # face parsing
     if opt.task == -1 or opt.task == 4:
         extract_semantics(ori_imgs_dir, parsing_dir, tuple_resolution) ### tuple_resolution to be added!
     #print(base_dir)
-    
     # extract bg
     if opt.task == -1 or opt.task == 5:
         extract_background(base_dir, ori_imgs_dir, tuple_resolution)
@@ -461,7 +459,7 @@ if __name__ == '__main__':
     # extract torso images and gt_images
     if opt.task == -1 or opt.task == 6:
         extract_torso_and_gt(base_dir, ori_imgs_dir, tuple_resolution)
-    
+
     # extract face landmarks
     if opt.task == -1 or opt.task == 7:
         extract_landmarks(ori_imgs_dir, tuple_resolution)
@@ -469,7 +467,8 @@ if __name__ == '__main__':
     # face tracking
     if opt.task == -1 or opt.task == 8:
         face_tracking(ori_imgs_dir, tuple_resolution)
-    
+
     # save transforms.json
     if opt.task == -1 or opt.task == 9:
         save_transforms(base_dir, ori_imgs_dir, tuple_resolution)
+

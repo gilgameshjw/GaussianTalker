@@ -51,7 +51,7 @@ def vis_parsing_maps(im, parsing_anno, stride, save_im=False, save_path='vis_res
         cv2.imwrite(save_path, vis_im)
 
 
-def evaluate(respth='./res/test_res', dspth='./data', cp='model_final_diss.pth'):
+def evaluate(respth='./res/test_res', dspth='./data', cp='model_final_diss.pth', img_size=(512, 512)):
 
     Path(respth).mkdir(parents=True, exist_ok=True)
 
@@ -73,8 +73,12 @@ def evaluate(respth='./res/test_res', dspth='./data', cp='model_final_diss.pth')
         for image_path in tqdm.tqdm(image_paths):
             if image_path.endswith('.jpg') or image_path.endswith('.png'):
                 img = Image.open(osp.join(dspth, image_path))
-                ori_size = img.size
-                image = img.resize((512, 512), Image.BILINEAR)
+                #ori_size = img.size
+                #print(ori_size)
+                image = img.resize(img_size, Image.BILINEAR)
+                
+                import sys
+                #sys.exit()
                 image = image.convert("RGB")
                 img = to_tensor(image)
 
@@ -86,7 +90,8 @@ def evaluate(respth='./res/test_res', dspth='./data', cp='model_final_diss.pth')
                 image_path = int(image_path[:-4])
                 image_path = str(image_path) + '.png'
 
-                vis_parsing_maps(image, parsing, stride=1, save_im=True, save_path=osp.join(respth, image_path), img_size=ori_size)
+                vis_parsing_maps(image, parsing, stride=1, save_im=True, save_path=osp.join(respth, image_path), img_size=img_size)
+                # vis_parsing_maps(image, parsing, stride=1, save_im=True, save_path=osp.join(respth, image_path), img_size=ori_size)
 
 
 if __name__ == "__main__":
@@ -97,4 +102,4 @@ if __name__ == "__main__":
     parser.add_argument("--img_h", type=int, default=512, help="image height")
     parser.add_argument("--img_w", type=int, default=512, help="image width")
     args = parser.parse_args()
-    evaluate(respth=args.respath, dspth=args.imgpath, cp=args.modelpath,img_size=(args.img_h, args.img_w))
+    evaluate(respth=args.respath, dspth=args.imgpath, cp=args.modelpath, img_size=(args.img_h, args.img_w))
