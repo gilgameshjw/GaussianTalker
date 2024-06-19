@@ -231,17 +231,9 @@ for iter in range(71):
 
     mask = (render_imgs[:, :, :, 3]).detach() > 0.0
     render_proj = sel_imgs.clone()
-    #print(render_proj.shape)
-    #print(render_imgs.shape)
-    #print(mask.shape)
-    #print(sel_imgs.shape)
+ 
     render_proj[mask] = render_imgs[mask][..., :3].byte()
     loss_col = cal_col_loss(render_imgs[:, :, :, :3], sel_imgs.float(), mask)
-
-    #print(loss_col.shape)
-    #print(loss_lan.shape)
-    #print(loss_regid.shape) 
-    #print(loss_regexp.shape)
 
     if iter > 50:
         loss = loss_col + loss_lan * 0.05 + loss_regid * 1.0 + loss_regexp * 0.8
