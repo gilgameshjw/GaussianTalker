@@ -402,8 +402,8 @@ if __name__ == "__main__":
         #print(args.multires)
         #print(args.llffhold)
         print(args.resolution)
-        import sys
-        sys.exit()
+        #import sys
+        #sys.exit()
     print("Optimizing " + args.model_path)
 
     # Initialize system state (RNG)
