@@ -398,7 +398,7 @@ def save_transforms(base_dir, ori_imgs_dir, tuple_resolution):
 
 if __name__ == '__main__':
     """
-        python train.py -s data/obama/ --model_path modeleu.pt --configs arguments/64_dim_1_512_transformer.py
+        time python process.py --path data/obama_2/obama.mp4 --configs arguments/64_dim_1_512_transformer.py
     """
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
@@ -444,15 +444,15 @@ if __name__ == '__main__':
     # extract audio features
     if opt.task == -1 or opt.task == 2:
         extract_audio_features(wav_path, mode=opt.asr)
-
+    
     # extract images
     if opt.task == -1 or opt.task == 3:
-        extract_images(opt.path, ori_imgs_dir, tuple_resolution) ### pbm in this function
+        extract_images(opt.path, ori_imgs_dir) ### pbm in this function
+      
     # face parsing
     if opt.task == -1 or opt.task == 4:
         extract_semantics(ori_imgs_dir, parsing_dir, tuple_resolution) ### tuple_resolution to be added!
     
-    #print(base_dir)
     # extract bg
     if opt.task == -1 or opt.task == 5:
         extract_background(base_dir, ori_imgs_dir, tuple_resolution)
@@ -472,4 +472,3 @@ if __name__ == '__main__':
     # save transforms.json
     if opt.task == -1 or opt.task == 9:
         save_transforms(base_dir, ori_imgs_dir, tuple_resolution)
-
