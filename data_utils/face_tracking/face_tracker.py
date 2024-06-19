@@ -36,6 +36,7 @@ end_id = args.frame_num
 lms, img_paths = load_dir(args.path, start_id, end_id)
 num_frames = lms.shape[0]
 h, w = args.img_h, args.img_w
+print(h, w)
 cxy = torch.tensor((w / 2.0, h / 2.0), dtype=torch.float).cuda()
 id_dim, exp_dim, tex_dim, point_num = 100, 79, 100, 34650
 model_3dmm = Face_3DMM(
@@ -51,7 +52,7 @@ arg_landis = 1e5
 print(f'[INFO] fitting focal length...')
 
 # fit the focal length
-for focal in range(600, 1500, 100):
+for focal in range(600, 700, 100): #range(600, 1500, 100): jair
     id_para = lms.new_zeros((1, id_dim), requires_grad=True)
     exp_para = lms.new_zeros((sel_num, exp_dim), requires_grad=True)
     euler_angle = lms.new_zeros((sel_num, 3), requires_grad=True)
@@ -189,7 +190,9 @@ renderer = Render_3DMM(arg_focal, h, w, batch_size, device_render)
 sel_ids = np.arange(0, num_frames, int(num_frames / batch_size))[:batch_size]
 imgs = []
 for sel_id in sel_ids:
-    imgs.append(cv2.imread(img_paths[sel_id])[:, :, ::-1])
+    img = cv2.imread(img_paths[sel_id])
+    img = cv2.resize(img, (h, w))
+    imgs.append(img[:, :, ::-1])
 imgs = np.stack(imgs)
 sel_imgs = torch.as_tensor(imgs).cuda()
 sel_lms = lms[sel_ids]
@@ -214,7 +217,7 @@ for iter in range(71):
     loss_lan = cal_lan_loss(proj_geo[:, :, :2], sel_lms.detach())
     loss_regid = torch.mean(id_para * id_para)
     loss_regexp = torch.mean(sel_exp_para * sel_exp_para)
-
+    
     sel_tex_para = tex_para.expand(batch_size, -1)
     sel_texture = model_3dmm.forward_tex(sel_tex_para)
     geometry = model_3dmm.forward_geo(sel_id_para, sel_exp_para)
@@ -228,8 +231,17 @@ for iter in range(71):
 
     mask = (render_imgs[:, :, :, 3]).detach() > 0.0
     render_proj = sel_imgs.clone()
+    #print(render_proj.shape)
+    #print(render_imgs.shape)
+    #print(mask.shape)
+    #print(sel_imgs.shape)
     render_proj[mask] = render_imgs[mask][..., :3].byte()
     loss_col = cal_col_loss(render_imgs[:, :, :, :3], sel_imgs.float(), mask)
+
+    #print(loss_col.shape)
+    #print(loss_lan.shape)
+    #print(loss_regid.shape) 
+    #print(loss_regexp.shape)
 
     if iter > 50:
         loss = loss_col + loss_lan * 0.05 + loss_regid * 1.0 + loss_regexp * 0.8
@@ -273,7 +285,11 @@ for i in range(int((num_frames - 1) / batch_size + 1)):
 
     imgs = []
     for sel_id in sel_ids:
-        imgs.append(cv2.imread(img_paths[sel_id])[:, :, ::-1])
+        #imgs.append(cv2.imread(img_paths[sel_id])[:, :, ::-1])
+        img = cv2.imread(img_paths[sel_id])
+        img = cv2.resize(img, (h, w))
+        imgs.append(img[:, :, ::-1])
+        
     imgs = np.stack(imgs)
     sel_imgs = torch.as_tensor(imgs).cuda()
     sel_lms = lms[sel_ids]

@@ -436,7 +436,7 @@ if __name__ == '__main__':
     os.makedirs(parsing_dir, exist_ok=True)
     os.makedirs(gt_imgs_dir, exist_ok=True)
     os.makedirs(torso_imgs_dir, exist_ok=True)
-
+    
     # extract audio
     if opt.task == -1 or opt.task == 1:
         extract_audio(opt.path, wav_path)
@@ -451,6 +451,7 @@ if __name__ == '__main__':
     # face parsing
     if opt.task == -1 or opt.task == 4:
         extract_semantics(ori_imgs_dir, parsing_dir, tuple_resolution) ### tuple_resolution to be added!
+    
     #print(base_dir)
     # extract bg
     if opt.task == -1 or opt.task == 5:
