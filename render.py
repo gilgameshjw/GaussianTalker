@@ -13,6 +13,8 @@ import numpy as np
 import torch
 from scene import Scene
 import os
+os.environ['OPENBLAS_NUM_THREADS'] = '640'
+
 import cv2
 from tqdm import tqdm
 from os import makedirs
@@ -55,7 +57,8 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
         makedirs(gts_path, exist_ok=True)
     
     viewpoint_stack = scene
-    viewpoint_stack_loader = DataLoader(viewpoint_stack, batch_size=batch_size,shuffle=False,num_workers=32,collate_fn=list)
+    viewpoint_stack_loader = DataLoader(viewpoint_stack, batch_size=batch_size,shuffle=False,num_workers=0,collate_fn=list)
+    # viewpoint_stack_loader = DataLoader(viewpoint_stack, batch_size=batch_size,shuffle=False,num_workers=32,collate_fn=list)
     
     loader = iter(viewpoint_stack_loader)
     
@@ -116,8 +119,7 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
         eye_attention.append(output["eye_attention"].cpu())
         cam_attention.append(output["cam_attention"].cpu())
         null_attention.append(output["null_attention"].cpu())
-        
-        
+                
     audio_tensor = torch.cat(audio_attention,0)[:process_until]
     eye_tensor = torch.cat(eye_attention,0)[:process_until]
     cam_tensor = torch.cat(cam_attention,0)[:process_until]
@@ -132,17 +134,17 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
     write_frames_to_video(tensor_to_image(cam_tensor),render_path+'/cam', use_imageio = False)
 
     if name != 'custom':
-        cmd = f'ffmpeg -loglevel quiet -y -i {gts_path}/gt.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {gts_path}/{model_path.split("/")[-2]}_{name}_{iteration}iter_gt.mov'
+        cmd = f'ffmpeg -loglevel quiet -y -i {gts_path}/gt.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {gts_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_gt.mov'
         os.system(cmd)
-    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/renders.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-2]}_{name}_{iteration}iter_renders.mov'
+    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/renders.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_renders.mov'
     os.system(cmd)
-    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/audio.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-2]}_{name}_{iteration}iter_audio.mov'
+    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/audio.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_audio.mov'
     os.system(cmd)
-    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/eye.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-2]}_{name}_{iteration}iter_eye.mov'
+    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/eye.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_eye.mov'
     os.system(cmd)
-    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/null.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-2]}_{name}_{iteration}iter_null.mov'
+    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/null.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_null.mov'
     os.system(cmd)
-    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/cam.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-2]}_{name}_{iteration}iter_cam.mov'
+    cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/cam.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_cam.mov'
     os.system(cmd)
     
     if name != 'custom':
@@ -176,6 +178,7 @@ def render_sets(dataset : ModelParams, hyperparam, iteration : int, pipeline : P
             render_set(dataset.model_path, "test",iteration, scene.getTestCameras(), gaussians, pipeline, audio_dir, batch_size)
 
 def write_frames_to_video(frames, path, codec='mp4v', fps=25, use_imageio=False):
+    use_imageio=True
     if use_imageio:
         imageio.mimwrite(f'{path}.mp4', frames, fps=fps, quality=8, output_params=['-vf', f'fps={fps}'], macro_block_size=None)
     else:
@@ -226,6 +229,7 @@ if __name__ == "__main__":
         from utils.params_utils import merge_hparams
         config = mmcv.Config.fromfile(args.configs)
         args = merge_hparams(args, config)
+    
     # Initialize system state (RNG)
     safe_state(args.quiet)
     args.only_infer = True
