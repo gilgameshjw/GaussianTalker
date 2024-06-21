@@ -69,7 +69,7 @@ Put "01_MorphableModel.mat" to data_utils/face_tracking/3DMM/
 cd data_utils/face_tracking
 python convert_BFM.py
 cd ../../
-python data_utils/process.py ${YOUR_DATASET_DIR}/${DATASET_NAME}/${DATASET_NAME}.mp4 
+python process.py --path ${YOUR_DATASET_DIR}/${DATASET_NAME}/${DATASET_NAME}.mp4 --configs arguments/64_dim_1_240_transformer.py
 ```
 
 - Obtain AU45 for eyes blinking
