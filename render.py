@@ -125,7 +125,7 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
     cam_tensor = torch.cat(cam_attention,0)[:process_until]
     null_tensor = torch.cat(null_attention,0)[:process_until]
     
-    if name != 'custom':
+    if name != 'custom__':
         write_frames_to_video(tensor_to_image(gt_image_tensor),gts_path+f'/gt', use_imageio = True)
     write_frames_to_video(tensor_to_image(image_tensor),render_path+'/renders', use_imageio = True)
     write_frames_to_video(tensor_to_image(audio_tensor),render_path+'/audio', use_imageio = False)
@@ -133,9 +133,10 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
     write_frames_to_video(tensor_to_image(null_tensor),render_path+'/null', use_imageio = False)
     write_frames_to_video(tensor_to_image(cam_tensor),render_path+'/cam', use_imageio = False)
 
-    if name != 'custom':
+    if name != 'custom__':
         cmd = f'ffmpeg -loglevel quiet -y -i {gts_path}/gt.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {gts_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_gt.mov'
         os.system(cmd)
+    
     cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/renders.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_renders.mov'
     os.system(cmd)
     cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/audio.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_audio.mov'
@@ -147,13 +148,15 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
     cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/cam.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_cam.mov'
     os.system(cmd)
     
-    if name != 'custom':
+    """
+    if name != 'custom__':
         os.remove(f"{gts_path}/gt.mp4")
     os.remove(f"{render_path}/renders.mp4")
     os.remove(f"{render_path}/audio.mp4")
     os.remove(f"{render_path}/eye.mp4")
     os.remove(f"{render_path}/null.mp4")
     os.remove(f"{render_path}/cam.mp4")
+    """
     
 def render_sets(dataset : ModelParams, hyperparam, iteration : int, pipeline : PipelineParams, args):
     skip_train, skip_test, skip_video, batch_size= args.skip_train, args.skip_test, args.skip_video, args.batch
@@ -167,13 +170,18 @@ def render_sets(dataset : ModelParams, hyperparam, iteration : int, pipeline : P
         
         if args.custom_aud != '':
             audio_dir = os.path.join(data_dir, args.custom_wav)
+            print(audio_dir)
+            #import sys
+            #sys.exit()
             render_set(dataset.model_path, "custom", scene.loaded_iter, scene.getCustomCameras(), gaussians, pipeline, audio_dir, batch_size)
         
         if not skip_train:
+            print("build render set train")
             audio_dir = os.path.join(data_dir, "aud_train.wav")
             render_set(dataset.model_path, "train", scene.loaded_iter, scene.getTrainCameras(), gaussians, pipeline, audio_dir, batch_size)
 
         if not skip_test:
+            print("build render set test")
             audio_dir = os.path.join(data_dir, "aud_novel.wav")
             render_set(dataset.model_path, "test",iteration, scene.getTestCameras(), gaussians, pipeline, audio_dir, batch_size)
 
@@ -229,6 +237,11 @@ if __name__ == "__main__":
         from utils.params_utils import merge_hparams
         config = mmcv.Config.fromfile(args.configs)
         args = merge_hparams(args, config)
+        
+    print(args.custom_aud)
+    print(args.custom_wav)
+    #import sys
+    #sys.exit()
     
     # Initialize system state (RNG)
     safe_state(args.quiet)
