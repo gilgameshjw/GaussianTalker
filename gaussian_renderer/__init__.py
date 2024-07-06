@@ -167,6 +167,7 @@ def render_from_batch(viewpoint_cameras, pc : GaussianModel, pipe, random_color=
         
         if not only_infer:
             y1,y2,x1,x2 = lips_list[idx]
+            y1,y2,x1,x2=int(y1),int(y2),int(x1),int(x2) 
             lip_crop = rendered_image[:,y1:y2,x1:x2]
             gt_lip_crop = gt_imgs[idx][:,:,y1:y2,x1:x2]
             rendered_lips.append(lip_crop.flatten())
