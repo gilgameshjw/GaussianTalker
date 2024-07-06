@@ -50,6 +50,7 @@ to8b = lambda x : (255*np.clip(x.cpu().numpy(),0,1)).astype(np.uint8)
 def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir, batch_size):
     render_path = os.path.join(model_path, name, "ours_{}".format(iteration), "renders")
     gts_path = os.path.join(model_path, name, "ours_{}".format(iteration), "gt")
+    os.makedirs(gts_path, exist_ok=True)
     inf_audio_dir = audio_dir
     
     makedirs(render_path, exist_ok=True)
@@ -101,8 +102,7 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
     gt_image_tensor = torch.cat(gt,dim=0)[:process_until]
     
     print("total frame:",(image_tensor.shape[0]))
-    print("FPS:",(torch.cat(image,dim=0).shape[0])/(total_time))
-    
+    print("FPS:",(torch.cat(image,dim=0).shape[0])/(total_time))  
     
     #render attention
     loader = iter(viewpoint_stack_loader)
@@ -125,13 +125,14 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
     cam_tensor = torch.cat(cam_attention,0)[:process_until]
     null_tensor = torch.cat(null_attention,0)[:process_until]
     
+    #if name != 'custom__':
+    write_frames_to_video(tensor_to_image(gt_image_tensor),gts_path+f'/gt', use_imageio = True)
     if name != 'custom__':
-        write_frames_to_video(tensor_to_image(gt_image_tensor),gts_path+f'/gt', use_imageio = True)
-    write_frames_to_video(tensor_to_image(image_tensor),render_path+'/renders', use_imageio = True)
-    write_frames_to_video(tensor_to_image(audio_tensor),render_path+'/audio', use_imageio = False)
-    write_frames_to_video(tensor_to_image(eye_tensor),render_path+'/eye', use_imageio = False)
-    write_frames_to_video(tensor_to_image(null_tensor),render_path+'/null', use_imageio = False)
-    write_frames_to_video(tensor_to_image(cam_tensor),render_path+'/cam', use_imageio = False)
+        write_frames_to_video(tensor_to_image(image_tensor),render_path+'/renders', use_imageio = True)
+        write_frames_to_video(tensor_to_image(audio_tensor),render_path+'/audio', use_imageio = False)
+        write_frames_to_video(tensor_to_image(eye_tensor),render_path+'/eye', use_imageio = False)
+        write_frames_to_video(tensor_to_image(null_tensor),render_path+'/null', use_imageio = False)
+        write_frames_to_video(tensor_to_image(cam_tensor),render_path+'/cam', use_imageio = False)
 
     if name != 'custom__':
         cmd = f'ffmpeg -loglevel quiet -y -i {gts_path}/gt.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {gts_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_gt.mov'
@@ -148,15 +149,16 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
     cmd = f'ffmpeg -loglevel quiet -y -i {render_path}/cam.mp4 -i {inf_audio_dir} -c:v copy -c:a aac {render_path}/{model_path.split("/")[-1]}_{name}_{iteration}iter_cam.mov'
     os.system(cmd)
     
-    """
+ 
+    os.remove(f"{gts_path}/gt.mp4")
     if name != 'custom__':
         os.remove(f"{gts_path}/gt.mp4")
-    os.remove(f"{render_path}/renders.mp4")
-    os.remove(f"{render_path}/audio.mp4")
-    os.remove(f"{render_path}/eye.mp4")
-    os.remove(f"{render_path}/null.mp4")
-    os.remove(f"{render_path}/cam.mp4")
-    """
+        os.remove(f"{render_path}/renders.mp4")
+        os.remove(f"{render_path}/audio.mp4")
+        os.remove(f"{render_path}/eye.mp4")
+        os.remove(f"{render_path}/null.mp4")
+        os.remove(f"{render_path}/cam.mp4")
+        
     
 def render_sets(dataset : ModelParams, hyperparam, iteration : int, pipeline : PipelineParams, args):
     skip_train, skip_test, skip_video, batch_size= args.skip_train, args.skip_test, args.skip_video, args.batch
