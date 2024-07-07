@@ -30,6 +30,9 @@ git submodule update --init --recursive
 conda create -n GaussianTalker python=3.7 
 conda activate GaussianTalker
 
+apt-get install portaudio19-dev
+apt-get install libgl1
+
 pip install -r requirements.txt
 pip install -e submodules/custom-bg-depth-diff-gaussian-rasterization
 pip install -e submodules/simple-knn

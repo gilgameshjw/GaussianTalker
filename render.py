@@ -150,7 +150,6 @@ def render_set(model_path, name, iteration, scene, gaussians, pipeline,audio_dir
     os.system(cmd)
     
  
-    os.remove(f"{gts_path}/gt.mp4")
     if name != 'custom__':
         os.remove(f"{gts_path}/gt.mp4")
         os.remove(f"{render_path}/renders.mp4")
